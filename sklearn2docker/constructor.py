@@ -1,8 +1,9 @@
 from sklearn.base import ClassifierMixin
 from os import path
+from shutil import copyfile
 from pickle import dump as PickleDumpFile
 from tempfile import TemporaryDirectory
-
+from json import dumps
 
 class Sklearn2Docker:
     def __init__(self, classifier: ClassifierMixin, feature_names: list, class_names: list):
@@ -16,6 +17,7 @@ class Sklearn2Docker:
 
         self.requirements_txt = [
             'pandas',
+            'scipy',
             'sklearn',
             'flask',
             'flask-cors',
@@ -71,6 +73,7 @@ class Sklearn2Docker:
 
         self.docker_file_path = path.join(self.temporary_directory.name, 'Dockerfile')
         self.pip_requirements_file_path = path.join(self.temporary_directory.name, 'requirements.txt')
+        self.json_config_file_path = path.join(self.temporary_directory.name, 'config.json')
 
         # write Dockerfile
         with open(self.docker_file_path, 'w') as f:
@@ -80,12 +83,28 @@ class Sklearn2Docker:
         with open(self.pip_requirements_file_path, 'w') as f:
             f.write("\n".join(self.requirements_txt))
 
+        # write the configuration JSON file
+        with open(self.json_config_file_path, 'w') as f:
+            f.write(dumps(
+                {
+                    "feature_names": self.feature_names,
+                    "class_names": self.class_names,
+                }
+            ))
+
+        # copy over the api.py file
+        api_file_path = path.join(path.abspath(path.dirname(__file__)), "api.py")
+        copyfile(api_file_path, path.join(self.temporary_directory.name, "api.py"))
+
         args = shlex.split("docker build --file {} --tag {}:{} {}".format(
             self.docker_file_path,
             name,
             tag,
             self.temporary_directory.name,
         ))
+
+        from os import system
+        system("ls {}".format(self.temporary_directory.name))
 
         print("Now attempting to run the command: [{}]".format(" ".join(args)))
         process = subprocess.Popen(args, stdout=subprocess.PIPE)
