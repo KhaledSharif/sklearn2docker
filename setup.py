@@ -17,5 +17,5 @@ setup(
     author_email='kldsrf@gmail.com',
     keywords='machine-learning docker deployment data-science',
     packages=find_packages(exclude=['contrib', 'docs', 'tests', 'notebooks', 'examples']),
-    install_requires=['pandas', 'sklearn'],
+    install_requires=['pandas', 'scipy', 'sklearn'],
 )

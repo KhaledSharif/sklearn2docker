@@ -3,9 +3,17 @@
 
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](http://www.gnu.org/licenses/lgpl-3.0)
 
+## Installation
+
+The easiest way to install `sklearn2docker` with all its dependencies is through `pip`:
+
+```bash
+pip install git+git://github.com/KhaledSharif/sklearn2docker.git
+```
+
 ## Getting started
 
-First, create your `sklearn` classifier. In this example we will use the iris dataset.
+First, create your `sklearn` classifier. In this example we will use the [Iris dataset](http://scikit-learn.org/stable/auto_examples/datasets/plot_iris_dataset.html).
 
 ```python
 from pandas import DataFrame
@@ -31,14 +39,14 @@ s2d = Sklearn2Docker(
 s2d.save(name="classifier", tag="iris")
 ```
 
-Below is an example of the output of the `s2d.save()` line we executed above.
+The name and tag arguments we passed to the `save` function are the name and tag of the Docker container we just built ([see: `docker tag`](https://docs.docker.com/engine/reference/commandline/tag/)). Below is an example of the output of the `s2d.save()` line we executed above.
 
 ```
 Now attempting to run the command: 
 [docker build --file /tmp/tmpywbu3_ad/Dockerfile 
  --tag classifier:iris /tmp/tmpywbu3_ad]
 =====================================================================
-> Sending build context to Docker daemon  8.192kB
+> Sending build context to Docker daemon
 > Step 1/6 : FROM python:3.6
 > ---> c1e459c00dc3
 ... output truncated ...
@@ -47,13 +55,13 @@ Now attempting to run the command:
 > Removing intermediate container bd61983358d9
 > ---> fa2041ac6d60
 > Successfully built fa2041ac6d60
-> Successfully tagged classifier:1518019754
+> Successfully tagged classifier:iris
 =====================================================================
 Success! You can now run your Docker container using the following command:
 	 docker run -d -p 5000:5000 classifier:iris
 ```
 
-You can now test your container by asking it to predict the same iris dataset and return the predicted probabilities as a DataFrame.
+You can now test your container by asking it to predict the same Iris dataset and return the predicted probabilities ([see: `predict_proba`](http://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html#sklearn.tree.DecisionTreeClassifier.predict_proba)) as a DataFrame.
 
 ```python
 from os import system
@@ -75,7 +83,7 @@ print(result.head())
 4       1         0.0        0.0
 ```
 
-You can also request regular classification. The format for the URL for your Docker container is as so:
+You can also request regular classification ([see: `predict`](http://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html#sklearn.tree.DecisionTreeClassifier.predict)). The format for the URL for your Docker container is as so:
 
 ```
 http://[a]:[b]/[c]/[d]

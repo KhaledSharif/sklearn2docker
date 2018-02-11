@@ -1,4 +1,4 @@
-# # create Sklearn classifier
+# create Sklearn classifier
 from pandas import DataFrame, read_json
 from sklearn.datasets import load_iris
 from sklearn.tree import DecisionTreeClassifier
@@ -27,5 +27,9 @@ system("docker run -d -p 5000:5000 classifier:iris && sleep 5")
 # send your training data as a json string
 from requests import post
 request = post("http://localhost:5000/predict/split", json=input_df.to_json(orient="split"))
+result = read_json(request.content.decode(), orient="split")
+print(result.head())
+
+request = post("http://localhost:5000/predict_proba/split", json=input_df.to_json(orient="split"))
 result = read_json(request.content.decode(), orient="split")
 print(result.head())
