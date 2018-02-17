@@ -9,7 +9,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='sklearn2docker',
-    version='0.0.1',
+    version='0.1',
     description='Convert your trained scikit-learn classifier to a Docker container with a pre-configured API.',
     long_description=long_description,
     url='https://github.com/KhaledSharif/sklearn2docker',
