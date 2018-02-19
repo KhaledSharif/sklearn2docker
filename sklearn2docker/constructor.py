@@ -49,27 +49,30 @@ class Sklearn2Docker:
         with open(self.classifier_path, 'wb') as f:
             PickleDumpFile(self.classifier, f)
 
-        # get the `export_graphviz` output as a string
-        from sklearn.tree import export_graphviz
-        export_graphviz_string = export_graphviz(
-            self.classifier,
-            out_file=None,
-            feature_names=self.feature_names,
-            class_names=self.class_names,
-            label='none',
-            impurity=False,
-            rounded=True,
-            filled=True,
-            proportion=True,
-        )
+        try:
+            # get the `export_graphviz` output as a string
+            from sklearn.tree import export_graphviz
+            export_graphviz_string = export_graphviz(
+                self.classifier,
+                out_file=None,
+                feature_names=self.feature_names,
+                class_names=self.class_names,
+                label='none',
+                impurity=False,
+                rounded=True,
+                filled=True,
+                proportion=True,
+            )
+            # write the dot file
+            with open(self.classifier_dot_file_path, 'w') as f:
+                f.write(export_graphviz_string)
+        except:
+            self.classifier_dot_file_path = ""
+            pass
 
         # write the feature names text file
         with open(self.classifier_text_file_path, 'w') as f:
             f.write("\n".join(self.feature_names) + "\n")
-
-        # write the dot file
-        with open(self.classifier_dot_file_path, 'w') as f:
-            f.write(export_graphviz_string)
 
         self.docker_file_path = path.join(self.temporary_directory.name, 'Dockerfile')
         self.pip_requirements_file_path = path.join(self.temporary_directory.name, 'requirements.txt')
