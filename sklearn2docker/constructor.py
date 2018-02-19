@@ -103,9 +103,6 @@ class Sklearn2Docker:
             self.temporary_directory.name,
         ))
 
-        from os import system
-        system("ls {}".format(self.temporary_directory.name))
-
         print("Now attempting to run the command: [{}]".format(" ".join(args)))
         process = subprocess.Popen(args, stdout=subprocess.PIPE)
 
