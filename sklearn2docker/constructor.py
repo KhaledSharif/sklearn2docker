@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 from json import dumps
 
 class Sklearn2Docker:
-    def __init__(self, classifier: ClassifierMixin, feature_names: list, class_names: list):
+    def __init__(self, classifier: ClassifierMixin, feature_names: list, class_names: list, multi_stage_build=False):
         assert isinstance(classifier, ClassifierMixin), type(classifier)
         assert isinstance(feature_names, list), type(feature_names)
         assert isinstance(class_names, list), type(class_names)
@@ -23,14 +23,18 @@ class Sklearn2Docker:
             'flask-cors',
         ]
 
-        self.docker_file = [
-            'FROM python:3.6',
-            'RUN mkdir /code',
-            'COPY ./ /code/',
-            'RUN pip install -r /code/requirements.txt',
-            'EXPOSE 5000',
-            'ENTRYPOINT python /code/api.py',
-        ]
+        if not multi_stage_build:
+            self.docker_file = [
+                'FROM jfloff/alpine-python:recent',
+                'RUN mkdir /code',
+                'COPY ./ /code/',
+                'RUN pip install -r /code/requirements.txt',
+                'EXPOSE 5000',
+                'ENTRYPOINT python /code/api.py',
+            ]
+        else:
+            # TODO: implement Docker multi-stage builds
+            raise NotImplementedError()
 
     def save(self, name="classifier", tag=None):
         from time import time

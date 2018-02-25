@@ -1,5 +1,3 @@
-
-
 import unittest
 
 
@@ -29,5 +27,5 @@ class DecisionTreeUnitTest(unittest.TestCase):
         model.fit(X, Y)
 
 
-
-
+if __name__ == '__main__':
+    unittest.main()

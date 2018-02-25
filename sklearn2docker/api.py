@@ -18,6 +18,15 @@ classifier_class_names = configuration_file["class_names"]
 with open("/code/classifier.pkl", "rb") as c:
     classifier_object = pickle.load(c)
 
+# if the model is a Keras neural network, the path to the model
+# weights should be saved in the `keras_model_weights` section
+# of the configuration file
+if "keras_model_weights" in configuration_file:
+    from keras import models
+    classifier_object.steps.append(
+        ('keras_neural_network', models.load_model(configuration_file["keras_model_weights"]))
+    )
+
 
 # the recommended pandas `orient` is `split`
 # see: https://github.com/pandas-dev/pandas/issues/18912

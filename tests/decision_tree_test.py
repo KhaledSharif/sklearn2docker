@@ -2,6 +2,10 @@ import unittest
 
 
 class DecisionTreeUnitTest(unittest.TestCase):
+    def tearDown(self):
+        from os import system
+        system("docker kill sklearn2docker_unittest")
+
     def test_decision_tree(self):
         from requests import post
         from os import system
@@ -39,8 +43,6 @@ class DecisionTreeUnitTest(unittest.TestCase):
         result = read_json(request.content.decode(), orient="split")
         self.assertEqual(list(result), ['setosa', 'versicolor', 'virginica'])
         self.assertGreater(len(result), 0)
-
-        system("docker kill sklearn2docker_unittest")
 
 
 if __name__ == '__main__':
