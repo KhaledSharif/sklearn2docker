@@ -6,8 +6,13 @@ from tempfile import TemporaryDirectory
 from json import dumps
 
 class Sklearn2Docker:
-    def __init__(self, classifier: ClassifierMixin, feature_names: list, class_names: list, multi_stage_build=False):
-        assert isinstance(classifier, ClassifierMixin), type(classifier)
+    def __init__(self, classifier, feature_names: list, class_names: list, multi_stage_build=False, production_build=False):
+        # assertions to ensure that the given classifier conforms to the `duck-typing` that `scikit-learn` requires
+        assert hasattr(classifier, "fit")
+        assert hasattr(classifier, "predict")
+        assert hasattr(classifier, "predict_proba")
+
+        # type assertions for the feature and class names
         assert isinstance(feature_names, list), type(feature_names)
         assert isinstance(class_names, list), type(class_names)
 
@@ -36,6 +41,17 @@ class Sklearn2Docker:
             # TODO: implement Docker multi-stage builds
             raise NotImplementedError()
 
+        if not production_build:
+            self.docker_file += [
+                'ENTRYPOINT python /code/api.py'
+            ]
+        else:
+            # TODO: alter number of processes depending on cpu count
+            self.docker_file += [
+                'RUN pip install gunicorn',
+                'ENTRYPOINT cd /code && gunicorn -w 4 -b :5000 api:app'
+            ]
+
     def save(self, name="classifier", tag=None):
         from time import time
         import shlex, subprocess
@@ -46,9 +62,23 @@ class Sklearn2Docker:
 
         self.temporary_directory = TemporaryDirectory()
 
+        self.config_file_contents = {
+            "feature_names": self.feature_names,
+            "class_names": self.class_names,
+        }
+
         self.classifier_path = path.join(self.temporary_directory.name, 'classifier.pkl')
         self.classifier_text_file_path = path.join(self.temporary_directory.name, 'classifier.txt')
         self.classifier_dot_file_path = path.join(self.temporary_directory.name, 'classifier.dot')
+
+        from sklearn.pipeline import Pipeline
+        if isinstance(self.classifier, Pipeline):
+            from keras import models
+            self.classifier_nn_model = self.classifier.steps.pop(-1)[-1]
+            classifier_model_file_name = 'classifier_nn_model.h5'
+            self.classifier_nn_model_path = path.join(self.temporary_directory.name, classifier_model_file_name)
+            models.save_model(self.classifier_nn_model.model, self.classifier_nn_model_path)
+            self.config_file_contents["keras_model_weights"] = "/code/" + classifier_model_file_name
 
         with open(self.classifier_path, 'wb') as f:
             PickleDumpFile(self.classifier, f)
@@ -93,10 +123,7 @@ class Sklearn2Docker:
         # write the configuration JSON file
         with open(self.json_config_file_path, 'w') as f:
             f.write(dumps(
-                {
-                    "feature_names": self.feature_names,
-                    "class_names": self.class_names,
-                }
+                self.config_file_contents
             ))
 
         # copy over the api.py file

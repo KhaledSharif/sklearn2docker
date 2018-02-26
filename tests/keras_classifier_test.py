@@ -1,30 +1,65 @@
 import unittest
 
 
-class DecisionTreeUnitTest(unittest.TestCase):
+class KerasClassifierUnitTest(unittest.TestCase):
+    def tearDown(self):
+        from os import system
+        system("docker kill sklearn2docker_unittest")
+
     @staticmethod
     def create_model():
         from keras.models import Sequential
-        from keras.layers import Dense
+        from keras.layers import Dense, Dropout
 
         model = Sequential()
-        model.add(Dense(12, input_dim=4, activation='relu'))
-        model.add(Dense(8, activation='relu'))
-        model.add(Dense(3, activation='sigmoid'))
-        model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+        model.add(Dense(64, input_shape=(30,), activation='relu'))
+        model.add(Dense(64, activation='relu'))
+        model.add(Dropout(0.5))
+        model.add(Dense(1, activation='sigmoid'))
+        model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
         return model
 
     def test_decision_tree(self):
         from keras.wrappers.scikit_learn import KerasClassifier
-        from sklearn.datasets import load_iris
+        from sklearn.pipeline import Pipeline
+        from sklearn.datasets import load_breast_cancer
+        from sklearn import preprocessing
         from pandas import DataFrame
         from numpy import array
+        from os import system
+        from pandas import read_json
+        from requests import post
 
-        iris = load_iris()
-        input_df = DataFrame(data=iris['data'], columns=iris['feature_names'])
-        model = KerasClassifier(build_fn=self.create_model, epochs=5, verbose=1)
-        X, Y = input_df.values, array(iris['target'])
+        breast_cancer = load_breast_cancer()
+        input_df = DataFrame(data=breast_cancer['data'], columns=breast_cancer['feature_names'])
+        model = Pipeline([
+            ('rescale', preprocessing.StandardScaler()),
+            ('min_max', preprocessing.MinMaxScaler((-1, 1,))),
+            ('nn', KerasClassifier(build_fn=self.create_model, epochs=1, verbose=1)),
+        ])
+        X, Y = input_df.values, array(breast_cancer['target'])
         model.fit(X, Y)
+
+        # convert classifier to Docker container
+        from sklearn2docker.constructor import Sklearn2Docker
+        s2d = Sklearn2Docker(
+            classifier=model,
+            feature_names=list(input_df),
+            class_names=breast_cancer['target_names'].tolist(),
+        )
+        s2d.save(
+            name="classifier",
+            tag="keras",
+        )
+
+        # run your Docker container as a detached process
+        system("docker run -d -p 5000:5000 --name sklearn2docker_unittest classifier:keras && sleep 5")
+
+        # send your training data as a json string
+        request = post("http://localhost:5000/predict/split", json=input_df.to_json(orient="split"))
+        result = read_json(request.content.decode(), orient="split")
+
+        print(result)
 
 
 if __name__ == '__main__':
