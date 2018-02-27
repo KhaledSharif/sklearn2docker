@@ -1,11 +1,7 @@
-import unittest
+from tests.base_unit_test import BaseUnitTest
 
 
-class DecisionTreeUnitTest(unittest.TestCase):
-    def tearDown(self):
-        from os import system
-        system("docker kill sklearn2docker_unittest")
-
+class DecisionTreeUnitTest(BaseUnitTest):
     def test_decision_tree(self):
         from requests import post
         from os import system
@@ -31,19 +27,20 @@ class DecisionTreeUnitTest(unittest.TestCase):
         )
 
         # run your Docker container as a detached process
-        system("docker run -d -p 5000:5000 --name sklearn2docker_unittest classifier:iris && sleep 5")
+        system("docker run -d -p {}:5000 --name {} classifier:iris && sleep 5".format(self.port, self.container_name))
 
         # send your training data as a json string
-        request = post("http://localhost:5000/predict/split", json=input_df.to_json(orient="split"))
+        request = post("http://localhost:{}/predict/split".format(self.port), json=input_df.to_json(orient="split"))
         result = read_json(request.content.decode(), orient="split")
         self.assertEqual(list(result), ['prediction'])
         self.assertGreater(len(result), 0)
 
-        request = post("http://localhost:5000/predict_proba/split", json=input_df.to_json(orient="split"))
+        request = post("http://localhost:{}/predict_proba/split".format(self.port), json=input_df.to_json(orient="split"))
         result = read_json(request.content.decode(), orient="split")
         self.assertEqual(list(result), ['setosa', 'versicolor', 'virginica'])
         self.assertGreater(len(result), 0)
 
 
 if __name__ == '__main__':
-    unittest.main()
+    from unittest import main
+    main()

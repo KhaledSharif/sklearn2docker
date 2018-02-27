@@ -21,16 +21,13 @@ class Sklearn2Docker:
         self.class_names = class_names
 
         self.requirements_txt = [
-            'pandas',
-            'scipy',
-            'sklearn',
             'flask',
             'flask-cors',
         ]
 
         if not multi_stage_build:
             self.docker_file = [
-                'FROM jfloff/alpine-python:recent',
+                'FROM frolvlad/alpine-python-machinelearning',
                 'RUN mkdir /code',
                 'COPY ./ /code/',
                 'RUN pip install -r /code/requirements.txt',
