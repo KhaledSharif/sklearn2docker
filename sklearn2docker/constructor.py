@@ -28,11 +28,11 @@ class Sklearn2Docker:
         if not multi_stage_build:
             self.docker_file = [
                 'FROM frolvlad/alpine-python-machinelearning',
-                'RUN mkdir /code',
-                'COPY ./ /code/',
-                'RUN pip install -r /code/requirements.txt',
+                'RUN mkdir /sklearn2docker',
+                'COPY ./ /sklearn2docker/',
+                'RUN pip install -r /sklearn2docker/requirements.txt',
                 'EXPOSE 5000',
-                'ENTRYPOINT python /code/api.py',
+                'ENTRYPOINT python /sklearn2docker/api.py',
             ]
         else:
             # TODO: implement Docker multi-stage builds
@@ -40,13 +40,13 @@ class Sklearn2Docker:
 
         if not production_build:
             self.docker_file += [
-                'ENTRYPOINT python /code/api.py'
+                'ENTRYPOINT python /sklearn2docker/api.py'
             ]
         else:
             # TODO: alter number of processes depending on cpu count
             self.docker_file += [
                 'RUN pip install gunicorn',
-                'ENTRYPOINT cd /code && gunicorn -w 4 -b :5000 api:app'
+                'ENTRYPOINT cd /sklearn2docker && gunicorn -w 4 -b :5000 api:app'
             ]
 
     def save(self, name="classifier", tag=None):
@@ -71,11 +71,15 @@ class Sklearn2Docker:
         from sklearn.pipeline import Pipeline
         if isinstance(self.classifier, Pipeline):
             from keras import models
+            self.docker_file = [
+                "FROM tensorflow/tensorflow:1.6.0-rc1-py3",
+                "RUN pip install keras"
+            ] + self.docker_file[1:]
             self.classifier_nn_model = self.classifier.steps.pop(-1)[-1]
             classifier_model_file_name = 'classifier_nn_model.h5'
             self.classifier_nn_model_path = path.join(self.temporary_directory.name, classifier_model_file_name)
             models.save_model(self.classifier_nn_model.model, self.classifier_nn_model_path)
-            self.config_file_contents["keras_model_weights"] = "/code/" + classifier_model_file_name
+            self.config_file_contents["keras_model_weights"] = "/sklearn2docker/" + classifier_model_file_name
 
         with open(self.classifier_path, 'wb') as f:
             PickleDumpFile(self.classifier, f)

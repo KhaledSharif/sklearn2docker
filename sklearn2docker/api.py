@@ -2,35 +2,24 @@ from flask import Flask, request
 from flask_cors import CORS
 from pandas import read_json
 from json import load
-import pickle
 from pandas import DataFrame
 from sklearn.tree import export_graphviz
+from sklearn2docker.classes import *
 
-app = Flask(__name__, template_folder='/code/')
+tensorflow_default_graph = None
+
+app = Flask(__name__)
 CORS(app)
 
-with open('/code/config.json') as cf:
-    configuration_file = load(cf)
-
-classifier_expected_column_names = configuration_file["feature_names"]
-classifier_class_names = configuration_file["class_names"]
-
-with open("/code/classifier.pkl", "rb") as c:
-    classifier_object = pickle.load(c)
-
-# if the model is a Keras neural network, the path to the model
-# weights should be saved in the `keras_model_weights` section
-# of the configuration file
-if "keras_model_weights" in configuration_file:
-    from keras import models
-    classifier_object.steps.append(
-        ('keras_neural_network', models.load_model(configuration_file["keras_model_weights"]))
-    )
-
+with open('/sklearn2docker/config.json') as cf:
+    classifier = Classifier(load(cf))
 
 # the recommended pandas `orient` is `split`
 # see: https://github.com/pandas-dev/pandas/issues/18912
 def perform_prediction(probabilistic, orient) -> str:
+    global tensorflow_default_graph
+    global classifier
+
     # attempt to retrieve data as json string, else fail
     data = request.get_json(force=True)
 
@@ -38,17 +27,30 @@ def perform_prediction(probabilistic, orient) -> str:
     data = read_json(data, orient=orient)
 
     # reorder dataframe with our expected column names
-    data = data[classifier_expected_column_names]
+    data = data[classifier.expected_column_names]
 
     # perform prediction
     if not probabilistic:
-        prediction = classifier_object.predict(data.values).tolist()
-        prediction = [classifier_class_names[x] for x in prediction]
+        if tensorflow_default_graph:
+            with tensorflow_default_graph.as_default():
+                prediction = classifier.classifier_object.predict(data.values)[:, 0].tolist()
+                prediction = [1 if x > 0.5 else 0 for x in prediction]
+        else:
+            prediction = classifier.classifier_object.predict(data.values).tolist()
+
+        prediction = [classifier.class_names[x] for x in prediction]
         prediction_dataframe = DataFrame()
         prediction_dataframe["prediction"] = prediction
     else:
-        prediction = classifier_object.predict_proba(data.values)
-        prediction_dataframe = DataFrame(data=prediction, columns=classifier_class_names)
+        if tensorflow_default_graph:
+            with tensorflow_default_graph.as_default():
+                prediction = classifier.classifier_object.predict_proba(data.values)[:, 0]
+
+                print(prediction)
+        else:
+            prediction = classifier.classifier_object.predict_proba(data.values).tolist()
+
+        prediction_dataframe = DataFrame(data=prediction, columns=classifier.class_names)
 
     # set the correct index
     prediction_dataframe.index = data.index
@@ -60,7 +62,7 @@ def perform_prediction(probabilistic, orient) -> str:
 
 
 def return_dot_file():
-    return export_graphviz(classifier_object, out_file=None)
+    return export_graphviz(classifier.classifier_object, out_file=None)
 
 
 @app.route('/<prediction_type>/<pandas_orient>', methods=['POST'])
@@ -75,4 +77,4 @@ def get_dot_file():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+    app.run(host='0.0.0.0', port=5000, debug=True, threaded=False)
